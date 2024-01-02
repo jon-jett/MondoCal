@@ -6,7 +6,7 @@ import os
 
 calendar_settings = {
     "Start Date": "1/1/2024",
-    "End Date": "5/20/2024",
+    "End Date": "5/31/2024",
     "M1": "#FF0000",  # Red
     "M2": "#FFA500",  # Orange
     "M3": "#FFD700",  # Yellow (darker for readability)
@@ -15,15 +15,15 @@ calendar_settings = {
     "M6": "#8A2BE2",  # Violet
     "Narrow Percent": 1,
     "Narrow Pixels": None,
-    "Thick Percent": 4,
+    "Thick Percent": 3,
     "Thick Pixels": None,
-    "Date Margin Multiplier": 1.1,
-    "Month Margin Multiplier": 1.2,
+    "Date Margin Multiplier": 1.5,
+    "Month Margin Multiplier": 1.5,
     "Date Margin Pixels": None,
     "Margin": 1,
     "Margin Pixels": None,
     "Date Font Size": 200,
-    "Month Font Size": 150,
+    "Month Font Size": 200,
     "Start Day": "Monday",
     "Paper Width": 22,  # Renamed from Total Width
     "Paper Height": 40,  # Renamed from Total Height
@@ -33,7 +33,7 @@ calendar_settings = {
     "font_path_bold": "Poppins/Poppins-Bold.ttf",
     "font_path_italic": "Poppins/Poppins-Italic.ttf",
     "PPI": 300,
-    "weekend_shader": "E5E5E5",
+    "weekend_shader": "#f4f4f4",
     "weekend_shader_color": "black",
     "Total Rows": None,
     "January Color": "#D3D3D3",
@@ -118,8 +118,12 @@ class Day:
             calendar_settings["Day Height"]
         )
 
-        # Create a new image with a white background
-        self.image = Image.new("RGB", (width, height), "white")
+        # Create a new image with a white background for days M-F and a shaded background for weekends
+        if self.date.weekday() < 5:
+            self.image = Image.new("RGB", (width, height), "white")
+        else:
+            self.image = Image.new("RGB", (width, height), calendar_settings["weekend_shader"])
+
 
         # Create a draw object
         draw = ImageDraw.Draw(self.image)
@@ -567,34 +571,44 @@ def add_months_to_calendar(calendar_image, calendar_settings, days_with_images, 
     return calendar_image
 
 
+def make_calendar(calendar_settings):
+    # Get list of months in the date range that get colors
+    month_list = create_month_list(
+        calendar_settings["Start Date"], calendar_settings["End Date"]
+    )
+
+    # Assign colors to the months
+    assign_month_colors(month_list, calendar_settings)
+
+    # Generate the images
+    days_with_images = create_day_objects()
+    # Assuming days_with_images is already populated with Day objects
+    calendar_with_days = create_calendar_with_days(days_with_images, calendar_settings)
+
+    calendar_with_weekdays = add_days_of_week_to_calendar(
+        calendar_with_days, calendar_settings
+    )
+
+    calendar_with_thick_lines = draw_thick_lines(calendar_with_weekdays, calendar_settings, days_with_images, month_list)
+
+    calendar_with_months = add_months_to_calendar(
+        calendar_with_thick_lines, calendar_settings, days_with_images, month_list
+    )
+
+    # Save the calendar image
+    calendar_with_months.save("calendar.png")
+
+    # set up PDF
+    from fpdf import FPDF
+    
+
+    return calendar_with_months
 
 
-# Get list of months in the date range that get colors
-month_list = create_month_list(
-    calendar_settings["Start Date"], calendar_settings["End Date"]
-)
 
-# Assign colors to the months
-assign_month_colors(month_list, calendar_settings)
 
-# Generate the images
-days_with_images = create_day_objects()
 
-# Assuming days_with_images is already populated with Day objects
-calendar_with_days = create_calendar_with_days(days_with_images, calendar_settings)
-
-calendar_with_weekdays = add_days_of_week_to_calendar(
-    calendar_with_days, calendar_settings
-)
-
-calendar_with_thick_lines = draw_thick_lines(calendar_with_weekdays, calendar_settings, days_with_images, month_list)
-
-calendar_with_months = add_months_to_calendar(
-    calendar_with_thick_lines, calendar_settings, days_with_images, month_list
-)
-
-# Save the calendar image
-calendar_with_months.save("calendar.png")
+make_calendar(calendar_settings)
 
 
 
