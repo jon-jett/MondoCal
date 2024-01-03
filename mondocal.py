@@ -3,31 +3,35 @@ from PIL import Image, ImageDraw, ImageFont
 import math
 from icecream import ic
 import os
+from fpdf import FPDF
+import io
+
 
 calendar_settings = {
     "Start Date": "1/1/2024",
     "End Date": "5/31/2024",
-    "M1": "#FF0000",  # Red
+    "M1": "#24D6E3",  #
     "M2": "#FFA500",  # Orange
     "M3": "#FFD700",  # Yellow (darker for readability)
     "M4": "#008000",  # Green
     "M5": "#0000FF",  # Blue
     "M6": "#8A2BE2",  # Violet
-    "Narrow Percent": 1,
+    "Narrow Percent": 1.5,
     "Narrow Pixels": None,
-    "Thick Percent": 3,
+    "Thick Percent": 4.5,
     "Thick Pixels": None,
     "Date Margin Multiplier": 1.5,
     "Month Margin Multiplier": 1.5,
     "Date Margin Pixels": None,
     "Margin": 1,
+    "Top Margin": 1.5,
     "Margin Pixels": None,
     "Date Font Size": 200,
     "Month Font Size": 200,
     "Start Day": "Monday",
     "Paper Width": 22,  # Renamed from Total Width
     "Paper Height": 40,  # Renamed from Total Height
-    "Month Width": .5,
+    "Month Width": 0.5,
     "Month Width Pixels": None,
     "font_path": "Poppins/Poppins-Regular.ttf",
     "font_path_bold": "Poppins/Poppins-Bold.ttf",
@@ -50,6 +54,88 @@ calendar_settings = {
     "December Color": "#D3D3D3",
     "Uniform Narrow Lines": True,
     "Narrow Lines Color": "#777777",
+    "DOTW Color": "#000000",
+    "Center Month": True,
+}
+
+
+rainbow_violet = {
+    "M1": "#FF0000",  # Red
+    "M2": "#FFA500",  # Orange
+    "M3": "#EE82EE",  # Violet
+    "M4": "#008000",  # Green
+    "M5": "#0000FF",  # Blue
+    "M6": "#8A2BE2",  # Dark Violet
+}
+
+rainbow_light_blue = {
+    "M1": "#FF0000",  # Red
+    "M2": "#FFA500",  # Orange
+    "M3": "#ADD8E6",  # Light Blue
+    "M4": "#008000",  # Green
+    "M5": "#0000FF",  # Blue
+    "M6": "#8A2BE2",  # Violet
+}
+
+
+rainbow_colors = {
+    "M1": "#FF0000",  # Red
+    "M2": "#FFA500",  # Orange
+    "M3": "#FFD700",  # Yellow (darker for readability)
+    "M4": "#008000",  # Green
+    "M5": "#0000FF",  # Blue
+    "M6": "#8A2BE2",  # Violet
+}
+
+sea_colors = {
+    "M1": "#0B3D91",  # Deep Blue
+    "M2": "#197278",  # Teal
+    "M3": "#006D5B",  # Turquoise
+    "M4": "#48A9A6",  # Aquamarine
+    "M5": "#1B4F72",  # Navy Blue
+    "M6": "#3B9B74",  # Sea Green
+}
+autumn_colors = {
+    "M1": "#FF6347",  # Tomato
+    "M2": "#FFA07A",  # Light Salmon
+    "M3": "#FF7F50",  # Coral
+    "M4": "#CD853F",  # Peru
+    "M5": "#A0522D",  # Sienna
+    "M6": "#8B0000",  # Dark Red
+}
+
+sky_colors = {
+    "M1": "#87CEFA",  # Light Sky Blue
+    "M2": "#4682B4",  # Steel Blue
+    "M3": "#6495ED",  # Cornflower Blue
+    "M4": "#7B68EE",  # Medium Slate Blue
+    "M5": "#6A5ACD",  # Slate Blue
+    "M6": "#4169E1",  # Royal Blue
+}
+
+earth_colors = {
+    "M1": "#D2B48C",  # Tan
+    "M2": "#DEB887",  # Burlywood
+    "M3": "#DAA520",  # Goldenrod
+    "M4": "#B8860B",  # Dark Goldenrod
+    "M5": "#CD853F",  # Peru
+    "M6": "#BC8F8F",  # Rosy Brown
+}
+sunset_colors = {
+    "M1": "#DB7093",  # Pale Violet Red
+    "M2": "#FF69B4",  # Hot Pink
+    "M3": "#FFB6C1",  # Light Pink
+    "M4": "#DDA0DD",  # Plum
+    "M5": "#DA70D6",  # Orchid
+    "M6": "#BA55D3",  # Medium Orchid
+}
+monochrome_colors = {
+    "M1": "#2F4F4F",  # Dark Slate Gray
+    "M2": "#696969",  # Dim Gray
+    "M3": "#A9A9A9",  # Dark Gray
+    "M4": "#C0C0C0",  # Silver
+    "M5": "#D3D3D3",  # Light Gray
+    "M6": "#808080",  # Gray
 }
 
 
@@ -122,8 +208,9 @@ class Day:
         if self.date.weekday() < 5:
             self.image = Image.new("RGB", (width, height), "white")
         else:
-            self.image = Image.new("RGB", (width, height), calendar_settings["weekend_shader"])
-
+            self.image = Image.new(
+                "RGB", (width, height), calendar_settings["weekend_shader"]
+            )
 
         # Create a draw object
         draw = ImageDraw.Draw(self.image)
@@ -153,13 +240,54 @@ class Day:
         # Draw the border
         border_width = int(calendar_settings["Narrow Pixels"])
         if calendar_settings["Uniform Narrow Lines"]:
-            draw.rectangle([0, 0, width, height], outline=calendar_settings["Narrow Lines Color"], width=border_width)
+            draw.rectangle(
+                [0, 0, width, height],
+                outline=calendar_settings["Narrow Lines Color"],
+                width=border_width,
+            )
         else:
             draw.rectangle(
                 [0, 0, width, height], outline=self.color, width=border_width
             )
 
         return self.image
+
+
+class PDF(FPDF):
+    def __init__(
+        self,
+        dpi,
+        pixel_width,
+        pixel_height,
+        doc_width_inch,
+        doc_height_inch,
+        margin_inch,
+        image_path,
+    ):
+        super().__init__(
+            orientation="P", unit="in", format=(doc_width_inch, doc_height_inch)
+        )
+        self.dpi = dpi
+        self.pixel_width = pixel_width
+        self.pixel_height = pixel_height
+        self.img_width_inch = pixel_width / dpi
+        self.img_height_inch = pixel_height / dpi
+        self.margin_inch = margin_inch
+        self.image_path = image_path
+        self.add_image_page()
+
+    def add_image_page(self):
+        self.add_page()
+        # Load the PNG image
+        img = Image.open(self.image_path)
+        # Calculate the width and height in inches
+        img_width_inch = img.width / self.dpi
+        img_height_inch = img.height / self.dpi
+        # Calculate the position to center the image
+        x = (self.w - img_width_inch) / 2
+        y = (self.h - img_height_inch) / 2
+        # Add the image to the PDF
+        self.image(self.image_path, x=x, y=y, w=img_width_inch, h=img_height_inch)
 
 
 # Helper function to round down to the nearest even integer
@@ -399,10 +527,6 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
         "SATURDAY",
         "SUNDAY",
     ]
-    if calendar_settings["Uniform Narrow Lines"]:
-        dotw_color = calendar_settings["Narrow Lines Color"]
-    else:
-        dotw_color = calendar_settings["black"]
 
     # Use the same start_x and start_y as in the Day class
     start_x = int(calendar_settings["Margin Pixels"]) + int(
@@ -444,19 +568,26 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
         text_x = center_x - (text_width / 2)
         text_y = start_y - (wednesday_height) - text_height
 
-        draw.text((text_x, text_y), day, fill=dotw_color, font=font)
+        draw.text(
+            (text_x, text_y), day, fill=calendar_settings["DOTW Color"], font=font
+        )
 
     return calendar_image
 
+
 def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_list):
     for index, each in enumerate(month_list):
-        is_last_month = (index == len(month_list) - 1)  # Check if this is the last month in the list
+        is_last_month = (
+            index == len(month_list) - 1
+        )  # Check if this is the last month in the list
         if is_last_month:
             last_adj = 0
         else:
             last_adj = 1
         month_color = calendar_settings[f"{each} Color"]
-        days_for_thick_lines = [day for day in days_with_images.values() if day.date.strftime("%B") == each]
+        days_for_thick_lines = [
+            day for day in days_with_images.values() if day.date.strftime("%B") == each
+        ]
         first_week = days_for_thick_lines[:7]
         last_week = days_for_thick_lines[-7:]
         first_day = days_for_thick_lines[0]
@@ -469,19 +600,25 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
         # Draw lines at the bottom first, adjusted to make them thinner once they're overwritten by the top lines
         for day in last_week:
             # Adjusting the Y-coordinate of both points by subtracting 'adj'
-            start_point = (day.bottom_left[0], day.bottom_left[1] - adj*2*last_adj)
-            end_point = (day.bottom_right[0], day.bottom_right[1] - adj*2*last_adj)
+            start_point = (day.bottom_left[0], day.bottom_left[1] - adj * 2 * last_adj)
+            end_point = (day.bottom_right[0], day.bottom_right[1] - adj * 2 * last_adj)
 
             draw.line(
                 [start_point, end_point],
                 fill=month_color,
                 width=int(calendar_settings["Thick Pixels"]),
             )
-        
+
         # Draw lines at the right side of the last day, adjusting the top, except if the last day is a sunday, skip it
         if last_day.date.weekday() != 6:
-            start_point = (last_day.bottom_right[0] - adj*last_adj, last_day.bottom_right[1]+adj)
-            end_point = (last_day.top_right[0] - adj*last_adj, last_day.top_right[1] - adj - 2*adj*last_adj)
+            start_point = (
+                last_day.bottom_right[0] - adj * last_adj,
+                last_day.bottom_right[1] + adj,
+            )
+            end_point = (
+                last_day.top_right[0] - adj * last_adj,
+                last_day.top_right[1] - adj - 2 * adj * last_adj,
+            )
             draw.line(
                 [start_point, end_point],
                 fill=month_color,
@@ -489,8 +626,11 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
             )
 
         # Draw lines at the left side of the first day
-        start_point = (first_day.bottom_left[0] + adj, first_day.bottom_left[1]+adj*1)
-        end_point = (first_day.top_left[0] + adj, first_day.top_left[1] - adj*0)
+        start_point = (
+            first_day.bottom_left[0] + adj,
+            first_day.bottom_left[1] + adj * 1,
+        )
+        end_point = (first_day.top_left[0] + adj, first_day.top_left[1] - adj * 0)
         draw.line(
             [start_point, end_point],
             fill=month_color,
@@ -510,18 +650,18 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
 
         # Draw lines at the left side of the month
         for day in mondays:
-            start_point = (day.bottom_left[0] + adj, day.bottom_left[1]+adj*1)
-            end_point = (day.top_left[0] + adj, day.top_left[1] - adj*0)
+            start_point = (day.bottom_left[0] + adj, day.bottom_left[1] + adj * 1)
+            end_point = (day.top_left[0] + adj, day.top_left[1] - adj * 0)
             draw.line(
                 [start_point, end_point],
                 fill=month_color,
                 width=int(calendar_settings["Thick Pixels"]),
             )
-        
+
         # Draw lines at the right side of the month
         for day in sundays:
-            start_point = (day.bottom_right[0], day.bottom_right[1]+adj)
-            end_point = (day.top_right[0], day.top_right[1] - adj*1)
+            start_point = (day.bottom_right[0], day.bottom_right[1] + adj)
+            end_point = (day.top_right[0], day.top_right[1] - adj * 1)
             draw.line(
                 [start_point, end_point],
                 fill=month_color,
@@ -530,43 +670,89 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
 
     return calendar_image
 
+
 # function to add month names to the calendar
 # accepts calendar_image, calendar_settings, days_with_images, month_list as input
 # for each month in month_list, generates a new image with the month name in the correct color, rotates it 90 CCW, and pastes it onto the calendar image in the correct location
 # the correct location for each month is to the left of the first monday of that month, with the top of the month name aligned with the top of the first monday
+# or if "Center Months" is True, the month name is centered between the top of the first monday and the bottom of the last monday and to the left
 # returns the calendar image with the month names added
-def add_months_to_calendar(calendar_image, calendar_settings, days_with_images, month_list):
+def add_months_to_calendar(
+    calendar_image, calendar_settings, days_with_images, month_list
+):
     font_size = calendar_settings["Month Font Size"]
     font = ImageFont.truetype(calendar_settings["font_path_bold"], size=font_size)
+
     for index, each in enumerate(month_list):
         month_color = calendar_settings[f"{each} Color"]
         month_name = each.upper()
         # find the first monday of the month
-        days_for_month_labels = [day for day in days_with_images.values() if day.date.strftime("%B") == each]
+        days_for_month_labels = [
+            day for day in days_with_images.values() if day.date.strftime("%B") == each
+        ]
         mondays = [day for day in days_for_month_labels if day.date.weekday() == 0]
         # find coordinates for the top left corner of the first monday of the month
         first_monday = mondays[0]
+        last_monday = mondays[-1]
         start_x, start_y = first_monday.top_left
-        #calculate the bounding box of the month name, adding characters j and y to make sure the bounding box is large enough JY
-        month_name_bbox = font.getbbox(each.upper() + "Y")
+        # calculate the bounding box of the month name, adding characters j and y to make sure the bounding box is large enough JY
+        month_name_bbox = font.getbbox(each.upper())
         month_name_width = month_name_bbox[2] - month_name_bbox[0]
         month_name_height = month_name_bbox[3] - month_name_bbox[1]
         # check if the month_name_width is greater than height of the mondays in the month and replace it with an abbreviation if it is
         if month_name_width > (calendar_settings["Day Height"] * len(mondays)):
             month_name = each[:3].upper()
         # create an image for the month name using month color, month name, and font size, and calculated dimensions
-        month_name_image = Image.new("RGBA", (month_name_width, month_name_height), (0, 0, 0, 0))
+        month_name_image = Image.new(
+            "RGBA", (month_name_width, month_name_height), (0, 0, 0, 0)
+        )
         draw = ImageDraw.Draw(month_name_image)
-        draw.text((0,month_name_height//-2), month_name, fill=month_color, font=font)
+        draw.text((0, month_name_height // -2), month_name, fill=month_color, font=font)
         # rotate the image 90 CCW
         month_name_image = month_name_image.rotate(90, expand=True)
-        # paste the image onto the calendar image
-        calendar_image.paste(month_name_image, (int(start_x - month_name_height * calendar_settings["Month Margin Multiplier"]), start_y), month_name_image)
-
-
-
-        
-
+        # If "Center Months" is False, top justify the names of the months and paste the image onto the calendar image
+        if not calendar_settings["Center Month"]:
+            calendar_image.paste(
+                month_name_image,
+                (
+                    int(
+                        start_x
+                        - month_name_height
+                        * calendar_settings["Month Margin Multiplier"]
+                    ),
+                    start_y,
+                ),
+                month_name_image,
+            )
+        # If "Center Months" is True, center the names of the months
+        # to do this we need to find the top of the first monday and the bottom of the last monday
+        # then find the center of the space between them
+        # then find the center of the month name
+        else:
+            # find the top of the first monday
+            first_monday_top = first_monday.top_left[1]
+            # find the bottom of the last monday
+            last_monday_bottom = last_monday.bottom_left[1]
+            # find the center of the space between them
+            space_between = last_monday_bottom - first_monday_top
+            space_between_center = space_between // 2
+            # find the center of the month name
+            month_name_center = month_name_height // 2
+            # find the top of the month name
+            month_name_top = space_between_center - month_name_width // 2
+            # paste the image onto the calendar image
+            calendar_image.paste(
+                month_name_image,
+                (
+                    int(
+                        start_x
+                        - month_name_height
+                        * calendar_settings["Month Margin Multiplier"]
+                    ),
+                    start_y + month_name_top,
+                ),
+                month_name_image,
+            )
 
     return calendar_image
 
@@ -589,26 +775,34 @@ def make_calendar(calendar_settings):
         calendar_with_days, calendar_settings
     )
 
-    calendar_with_thick_lines = draw_thick_lines(calendar_with_weekdays, calendar_settings, days_with_images, month_list)
+    calendar_with_thick_lines = draw_thick_lines(
+        calendar_with_weekdays, calendar_settings, days_with_images, month_list
+    )
 
     calendar_with_months = add_months_to_calendar(
         calendar_with_thick_lines, calendar_settings, days_with_images, month_list
     )
 
-    # Save the calendar image
-    calendar_with_months.save("calendar.png")
-
-    # set up PDF
-    from fpdf import FPDF
-    
-
     return calendar_with_months
 
 
+calendar_settings.update(rainbow_colors)
+
+calendar_image = make_calendar(calendar_settings)
+
+# Save the calendar image
+calendar_image.save("calendar.png")
 
 
+calendar_pdf = PDF(
+    dpi=calendar_settings["PPI"],
+    pixel_width=calendar_settings["Paper Pixel Width"],
+    pixel_height=calendar_settings["Paper Pixel Height"],
+    doc_width_inch=calendar_settings["Paper Width"],
+    doc_height_inch=calendar_settings["Paper Height"],
+    margin_inch=calendar_settings["Margin"],
+    image_path="calendar.png",
+)
 
-make_calendar(calendar_settings)
 
-
-
+calendar_pdf.output("calendar.pdf")
