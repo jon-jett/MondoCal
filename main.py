@@ -1,56 +1,30 @@
-from mondocal import make_calendar, PDF
+from mondocal import make_calendar
 
 
 calendar_settings = {
-    "Title": "SPRING 2024",
+    "Title": "SUMMER 2024",
     "Title Color": "#000000",
-    "Start Date": "1/1/2024",
-    "End Date": "5/31/2024",
-    "M1": "#24D6E3",  #
-    "M2": "#FFA500",  # Orange
-    "M3": "#FFD700",  # Yellow (darker for readability)
-    "M4": "#008000",  # Green
-    "M5": "#0000FF",  # Blue
-    "M6": "#8A2BE2",  # Violet
+    "Start Date": "8/12/2024",
+    "End Date": "12/31/2024",
     "Narrow Percent": 1.5,
-    "Narrow Pixels": None,
     "Thick Percent": 4.5,
-    "Thick Pixels": None,
     "Date Margin Multiplier": 1.5,
     "Month Margin Multiplier": 1.5,
-    "Date Margin Pixels": None,
     "Margin": 1,
-    "Title Height": 1.5 ,
-    "Top Title Proportion": .8,
-    "Top Margin Pixels": None,
-    "Margin Pixels": None,
+    "Title Height": 1.5,
+    "Top Title Proportion": 0.8,
     "Date Font Size": 200,
     "Month Font Size": 200,
     "Start Day": "Monday",
     "Paper Width": 22,  # Renamed from Total Width
     "Paper Height": 42,  # Renamed from Total Height
     "Month Width": 0.5,
-    "Month Width Pixels": None,
-    "font_path": "Poppins/Poppins-Regular.ttf",
-    "font_path_bold": "Poppins/Poppins-Bold.ttf",
-    "font_path_italic": "Poppins/Poppins-Italic.ttf",
-    "font_path_title": "Poppins/Poppins-Medium.ttf",
+    "Font Path Day": "Poppins/Poppins-Regular.ttf",
+    "Font Path Month": "Poppins/Poppins-Bold.ttf",
+    "Font Path Title": "Poppins/Poppins-Medium.ttf",
     "PPI": 300,
     "weekend_shader": "#f4f4f4",
     "weekend_shader_color": "black",
-    "Total Rows": None,
-    "January Color": "#D3D3D3",
-    "February Color": "#D3D3D3",
-    "March Color": "#D3D3D3",
-    "April Color": "#D3D3D3",
-    "May Color": "#D3D3D3",
-    "June Color": "#D3D3D3",
-    "July Color": "#D3D3D3",
-    "August Color": "#D3D3D3",
-    "September Color": "#D3D3D3",
-    "October Color": "#D3D3D3",
-    "November Color": "#D3D3D3",
-    "December Color": "#D3D3D3",
     "Uniform Narrow Lines": True,
     "Narrow Lines Color": "#777777",
     "DOTW Color": "#000000",
@@ -145,19 +119,10 @@ monochrome_colors = {
 }
 
 
-
-
 calendar_settings.update(rainbow_violet_sequence)
 
 
-
 calendar_image, calendar_pdf = make_calendar(calendar_settings)
-
-# Save the calendar image
-calendar_image.save("calendar.png")
-
-
-
 
 
 calendar_pdf.output("calendar.pdf")

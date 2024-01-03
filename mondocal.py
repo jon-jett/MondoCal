@@ -6,9 +6,6 @@ import os
 from fpdf import FPDF
 
 
-
-
-
 class Day:
     def __init__(self, date_str, calendar_settings):
         # Convert date string to datetime object for easy manipulation
@@ -30,7 +27,9 @@ class Day:
         start_x = int(calendar_settings["Margin Pixels"]) + int(
             calendar_settings["Month Width Pixels"]
         )
-        start_y = calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]
+        start_y = (
+            calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]
+        )
 
         day_width = calendar_settings["Day Width"]
         day_height = calendar_settings["Day Height"]
@@ -88,7 +87,8 @@ class Day:
         # Load the font
         try:
             font = ImageFont.truetype(
-                calendar_settings["font_path"], size=calendar_settings["Date Font Size"]
+                calendar_settings["Font Path Day"],
+                size=calendar_settings["Date Font Size"],
             )
         except IOError:
             font = ImageFont.load_default()
@@ -168,6 +168,28 @@ def round_down_to_even(number):
 
 ##### Calculate Calendar Graphical Setup
 def initialize_calendar_settings(calendar_settings):
+    noneditable_settings = {
+        "Month Width Pixels": None,
+        "Date Margin Pixels": None,
+        "Total Rows": None,
+        "Top Margin Pixels": None,
+        "Margin Pixels": None,
+        "Thick Pixels": None,
+        "Narrow Pixels": None,
+        "January Color": calendar_settings["Narrow Lines Color"],
+        "February Color": calendar_settings["Narrow Lines Color"],
+        "March Color": calendar_settings["Narrow Lines Color"],
+        "April Color": calendar_settings["Narrow Lines Color"],
+        "May Color": calendar_settings["Narrow Lines Color"],
+        "June Color": calendar_settings["Narrow Lines Color"],
+        "July Color": calendar_settings["Narrow Lines Color"],
+        "August Color": calendar_settings["Narrow Lines Color"],
+        "September Color": calendar_settings["Narrow Lines Color"],
+        "October Color": calendar_settings["Narrow Lines Color"],
+        "November Color": calendar_settings["Narrow Lines Color"],
+        "December Color": calendar_settings["Narrow Lines Color"],
+    }
+    calendar_settings.update(noneditable_settings)
     # Convert inches to pixels
     calendar_settings["Paper Pixel Width"] = (
         calendar_settings["Paper Width"] * calendar_settings["PPI"]
@@ -178,22 +200,22 @@ def initialize_calendar_settings(calendar_settings):
     calendar_settings["Month Width Pixels"] = (
         calendar_settings["Month Width"] * calendar_settings["PPI"]
     )
-    calendar_settings["Top Margin Pixels"] = int((
-        calendar_settings["Title Height"] * calendar_settings["PPI"]
-    ))
+    calendar_settings["Top Margin Pixels"] = int(
+        (calendar_settings["Title Height"] * calendar_settings["PPI"])
+    )
     calendar_settings["Margin Pixels"] = (
         calendar_settings["Margin"] * calendar_settings["PPI"]
     )
-
 
     # Calculate print width and height
     calendar_settings["Print Width"] = calendar_settings["Paper Pixel Width"] - (
         2 * calendar_settings["Margin Pixels"]
     )
     calendar_settings["Print Height"] = (
-        calendar_settings["Paper Pixel Height"] - 2 * calendar_settings["Margin Pixels"] - calendar_settings["Top Margin Pixels"]
+        calendar_settings["Paper Pixel Height"]
+        - 2 * calendar_settings["Margin Pixels"]
+        - calendar_settings["Top Margin Pixels"]
     )
-
 
     # Calculate day width and round down to the nearest even integer
     calendar_settings["Day Width"] = round_down_to_even(
@@ -217,7 +239,6 @@ def initialize_calendar_settings(calendar_settings):
         calendar_settings["Print Height"] / calendar_settings["total_weeks"]
     )
 
-
     # Calculate the narrow,thick and date margin pixel values
     calendar_settings["Narrow Pixels"] = (
         calendar_settings["Narrow Percent"] / 100 * calendar_settings["Day Width"]
@@ -229,6 +250,7 @@ def initialize_calendar_settings(calendar_settings):
         calendar_settings["Thick Pixels"] * calendar_settings["Date Margin Multiplier"]
     )
     return calendar_settings
+
 
 # Function to iterate through each day in the range and create Day objects
 def create_day_objects(calendar_settings):
@@ -403,7 +425,9 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
     start_x = int(calendar_settings["Margin Pixels"]) + int(
         calendar_settings["Month Width Pixels"]
     )
-    start_y = calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]  # Adjust this value if needed
+    start_y = (
+        calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]
+    )  # Adjust this value if needed
 
     day_width = calendar_settings["Day Width"]
 
@@ -419,9 +443,9 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
 
     # Find the maximum font size for "WEDNESDAY"
     max_font_size = find_max_font_size(
-        calendar_settings["font_path"], "WEDNESDAY", max_font_width, max_font_height
+        calendar_settings["Font Path Day"], "WEDNESDAY", max_font_width, max_font_height
     )
-    font = ImageFont.truetype(calendar_settings["font_path"], size=max_font_size)
+    font = ImageFont.truetype(calendar_settings["Font Path Day"], size=max_font_size)
 
     # Get the bounding box of "WEDNESDAY" for vertical alignment calculation
     wednesday_bbox = font.getbbox("WEDNESDAY")
@@ -552,7 +576,7 @@ def add_months_to_calendar(
     calendar_image, calendar_settings, days_with_images, month_list
 ):
     font_size = calendar_settings["Month Font Size"]
-    font = ImageFont.truetype(calendar_settings["font_path_bold"], size=font_size)
+    font = ImageFont.truetype(calendar_settings["Font Path Month"], size=font_size)
 
     for index, each in enumerate(month_list):
         month_color = calendar_settings[f"{each} Color"]
@@ -621,8 +645,8 @@ def add_months_to_calendar(
                         * calendar_settings["Month Margin Multiplier"]
                     ),
                     int(
-                    start_y + month_name_top,
-                    )
+                        start_y + month_name_top,
+                    ),
                 ),
                 month_name_image,
             )
@@ -659,7 +683,8 @@ def make_calendar(calendar_settings):
 
     calendar_with_title = add_calendar_title(calendar_with_months, calendar_settings)
 
-
+    # Save the calendar image
+    calendar_with_title.save("calendar.png")
 
     calendar_pdf = PDF(
         dpi=calendar_settings["PPI"],
@@ -674,31 +699,42 @@ def make_calendar(calendar_settings):
     return calendar_with_title, calendar_pdf
 
 
-
 def add_calendar_title(calendar_image, calendar_settings):
     # Calculate the maximum font size for the title
     max_font_size = find_max_font_size(
-        calendar_settings["font_path_title"],
+        calendar_settings["Font Path Title"],
         calendar_settings["Title"],
         calendar_settings["Paper Pixel Width"],
-        int(calendar_settings["Top Margin Pixels"] * calendar_settings["Top Title Proportion"]),
+        int(
+            calendar_settings["Top Margin Pixels"]
+            * calendar_settings["Top Title Proportion"]
+        ),
     )
 
     if max_font_size is None:
         return calendar_image
 
     # Create a font object with the maximum font size
-    title_font = ImageFont.truetype(calendar_settings["font_path_title"], max_font_size)
+    title_font = ImageFont.truetype(calendar_settings["Font Path Title"], max_font_size)
 
     # Estimate the size of the title image (adding extra space for descenders)
     estimated_height = max_font_size * 2  # Extra 20% space for descenders
 
     # Create a larger transparent image for the title
-    title_image_large = Image.new("RGBA", (calendar_settings["Paper Pixel Width"], int(estimated_height)), (0, 0, 0, 0))
+    title_image_large = Image.new(
+        "RGBA",
+        (calendar_settings["Paper Pixel Width"], int(estimated_height)),
+        (0, 0, 0, 0),
+    )
     draw = ImageDraw.Draw(title_image_large)
 
     # Draw the title on the larger transparent image
-    draw.text((0, max_font_size * 0.1), calendar_settings["Title"], fill="black", font=title_font)
+    draw.text(
+        (0, max_font_size * 0.1),
+        calendar_settings["Title"],
+        fill="black",
+        font=title_font,
+    )
 
     # Trim the image to the actual bounding box of the rendered text
     bbox = title_image_large.getbbox()
@@ -717,12 +753,6 @@ def add_calendar_title(calendar_image, calendar_settings):
     calendar_image.paste(title_image, (title_x, title_y), title_image)
 
     ic(calendar_image.size)
-    ic(calendar_settings["Paper Pixel Width"],calendar_settings["Paper Pixel Height"])
+    ic(calendar_settings["Paper Pixel Width"], calendar_settings["Paper Pixel Height"])
 
     return calendar_image
-
-
-
-
-
-
