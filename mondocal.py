@@ -8,6 +8,8 @@ import io
 
 
 calendar_settings = {
+    "Title": "SPRING 2024",
+    "Title Color": "#000000",
     "Start Date": "1/1/2024",
     "End Date": "5/31/2024",
     "M1": "#24D6E3",  #
@@ -24,7 +26,9 @@ calendar_settings = {
     "Month Margin Multiplier": 1.5,
     "Date Margin Pixels": None,
     "Margin": 1,
-    "Top Margin": 1.5,
+    "Top Margin": 2,
+    "Top Title Proportion": .8,
+    "Top Margin Pixels": None,
     "Margin Pixels": None,
     "Date Font Size": 200,
     "Month Font Size": 200,
@@ -36,6 +40,7 @@ calendar_settings = {
     "font_path": "Poppins/Poppins-Regular.ttf",
     "font_path_bold": "Poppins/Poppins-Bold.ttf",
     "font_path_italic": "Poppins/Poppins-Italic.ttf",
+    "font_path_title": "Poppins/Poppins-Medium.ttf",
     "PPI": 300,
     "weekend_shader": "#f4f4f4",
     "weekend_shader_color": "black",
@@ -59,13 +64,13 @@ calendar_settings = {
 }
 
 
-rainbow_violet = {
+rainbow_violet_sequence = {
     "M1": "#FF0000",  # Red
-    "M2": "#FFA500",  # Orange
-    "M3": "#EE82EE",  # Violet
-    "M4": "#008000",  # Green
-    "M5": "#0000FF",  # Blue
-    "M6": "#8A2BE2",  # Dark Violet
+    "M2": "#FF9800",  # Orange
+    "M6": "#8A2BE2",  # Violet
+    "M3": "#008000",  # Green
+    "M4": "#0000FF",  # Blue
+    "M5": "#4B0082",  # Indigo
 }
 
 rainbow_light_blue = {
@@ -76,7 +81,14 @@ rainbow_light_blue = {
     "M5": "#0000FF",  # Blue
     "M6": "#8A2BE2",  # Violet
 }
-
+rainbow_green_sequence = {
+    "M1": "#FF0000",  # Red
+    "M2": "#FFA500",  # Orange
+    "M3": "#008000",  # Green
+    "M4": "#0000FF",  # Blue
+    "M5": "#4B0082",  # Indigo
+    "M6": "#8A2BE2",  # Violet
+}
 
 rainbow_colors = {
     "M1": "#FF0000",  # Red
@@ -160,7 +172,7 @@ class Day:
         start_x = int(calendar_settings["Margin Pixels"]) + int(
             calendar_settings["Month Width Pixels"]
         )
-        start_y = 2 * calendar_settings["Margin Pixels"]
+        start_y = calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]
 
         day_width = calendar_settings["Day Width"]
         day_height = calendar_settings["Day Height"]
@@ -297,67 +309,68 @@ def round_down_to_even(number):
 
 
 ##### Calculate Calendar Graphical Setup
-# Convert inches to pixels
-calendar_settings["Paper Pixel Width"] = (
-    calendar_settings["Paper Width"] * calendar_settings["PPI"]
-)
-calendar_settings["Paper Pixel Height"] = (
-    calendar_settings["Paper Height"] * calendar_settings["PPI"]
-)
-calendar_settings["Month Width Pixels"] = (
-    calendar_settings["Month Width"] * calendar_settings["PPI"]
-)
+def initialize_calendar_settings(calendar_settings):
+    # Convert inches to pixels
+    calendar_settings["Paper Pixel Width"] = (
+        calendar_settings["Paper Width"] * calendar_settings["PPI"]
+    )
+    calendar_settings["Paper Pixel Height"] = (
+        calendar_settings["Paper Height"] * calendar_settings["PPI"]
+    )
+    calendar_settings["Month Width Pixels"] = (
+        calendar_settings["Month Width"] * calendar_settings["PPI"]
+    )
+    calendar_settings["Top Margin Pixels"] = int((
+        calendar_settings["Top Margin"] * calendar_settings["PPI"]
+    ))
+    calendar_settings["Margin Pixels"] = (
+        calendar_settings["Margin"] * calendar_settings["PPI"]
+    )
 
 
-# Default margin if not specified
-calendar_settings["Margin Pixels"] = (
-    calendar_settings["Margin"] * calendar_settings["PPI"]
-)
+    # Calculate print width and height
+    calendar_settings["Print Width"] = calendar_settings["Paper Pixel Width"] - (
+        2 * calendar_settings["Margin Pixels"]
+    )
+    calendar_settings["Print Height"] = (
+        calendar_settings["Paper Pixel Height"] - 2 * calendar_settings["Margin Pixels"] - calendar_settings["Top Margin Pixels"]
+    )
 
 
-# Calculate print width and height
-calendar_settings["Print Width"] = calendar_settings["Paper Pixel Width"] - (
-    2 * calendar_settings["Margin Pixels"]
-)
-calendar_settings["Print Height"] = (
-    calendar_settings["Paper Pixel Height"] - 3 * calendar_settings["Margin Pixels"]
-)
+    # Calculate day width and round down to the nearest even integer
+    calendar_settings["Day Width"] = round_down_to_even(
+        (calendar_settings["Print Width"] - calendar_settings["Month Width Pixels"]) / 7
+    )
+
+    # Calculate the total number of weeks in the date range
+    calendar_settings["start_date"] = datetime.strptime(
+        calendar_settings["Start Date"], "%m/%d/%Y"
+    )
+    calendar_settings["end_date"] = datetime.strptime(
+        calendar_settings["End Date"], "%m/%d/%Y"
+    )
+    calendar_settings["total_days"] = (
+        calendar_settings["end_date"] - calendar_settings["start_date"]
+    ).days + 1
+    calendar_settings["total_weeks"] = math.ceil(calendar_settings["total_days"] / 7)
+
+    # Calculate day height and round down to the nearest even integer
+    calendar_settings["Day Height"] = round_down_to_even(
+        calendar_settings["Print Height"] / calendar_settings["total_weeks"]
+    )
 
 
-# Calculate day width and round down to the nearest even integer
-calendar_settings["Day Width"] = round_down_to_even(
-    (calendar_settings["Print Width"] - calendar_settings["Month Width Pixels"]) / 7
-)
-
-# Calculate the total number of weeks in the date range
-calendar_settings["start_date"] = datetime.strptime(
-    calendar_settings["Start Date"], "%m/%d/%Y"
-)
-calendar_settings["end_date"] = datetime.strptime(
-    calendar_settings["End Date"], "%m/%d/%Y"
-)
-calendar_settings["total_days"] = (
-    calendar_settings["end_date"] - calendar_settings["start_date"]
-).days + 1
-calendar_settings["total_weeks"] = math.ceil(calendar_settings["total_days"] / 7)
-
-# Calculate day height and round down to the nearest even integer
-calendar_settings["Day Height"] = round_down_to_even(
-    calendar_settings["Print Height"] / calendar_settings["total_weeks"]
-)
-
-
-# Calculate the narrow,thick and date margin pixel values
-calendar_settings["Narrow Pixels"] = (
-    calendar_settings["Narrow Percent"] / 100 * calendar_settings["Day Width"]
-)
-calendar_settings["Thick Pixels"] = (
-    calendar_settings["Thick Percent"] / 100 * calendar_settings["Day Width"]
-)
-calendar_settings["Date Margin Pixels"] = (
-    calendar_settings["Thick Pixels"] * calendar_settings["Date Margin Multiplier"]
-)
-
+    # Calculate the narrow,thick and date margin pixel values
+    calendar_settings["Narrow Pixels"] = (
+        calendar_settings["Narrow Percent"] / 100 * calendar_settings["Day Width"]
+    )
+    calendar_settings["Thick Pixels"] = (
+        calendar_settings["Thick Percent"] / 100 * calendar_settings["Day Width"]
+    )
+    calendar_settings["Date Margin Pixels"] = (
+        calendar_settings["Thick Pixels"] * calendar_settings["Date Margin Multiplier"]
+    )
+    return calendar_settings
 
 # Function to iterate through each day in the range and create Day objects
 def create_day_objects():
@@ -532,7 +545,7 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
     start_x = int(calendar_settings["Margin Pixels"]) + int(
         calendar_settings["Month Width Pixels"]
     )
-    start_y = 2 * calendar_settings["Margin Pixels"]  # Adjust this value if needed
+    start_y = calendar_settings["Margin Pixels"] + calendar_settings["Top Margin Pixels"]  # Adjust this value if needed
 
     day_width = calendar_settings["Day Width"]
 
@@ -749,7 +762,9 @@ def add_months_to_calendar(
                         - month_name_height
                         * calendar_settings["Month Margin Multiplier"]
                     ),
+                    int(
                     start_y + month_name_top,
+                    )
                 ),
                 month_name_image,
             )
@@ -783,10 +798,65 @@ def make_calendar(calendar_settings):
         calendar_with_thick_lines, calendar_settings, days_with_images, month_list
     )
 
-    return calendar_with_months
+    calendar_with_title = add_calendar_title(calendar_with_months, calendar_settings)
+
+    return calendar_with_title
 
 
-calendar_settings.update(rainbow_colors)
+
+def add_calendar_title(calendar_image, calendar_settings):
+    # Calculate the maximum font size for the title
+    max_font_size = find_max_font_size(
+        calendar_settings["font_path_title"],
+        calendar_settings["Title"],
+        calendar_settings["Paper Pixel Width"],
+        int(calendar_settings["Top Margin Pixels"] * calendar_settings["Top Title Proportion"]),
+    )
+
+    if max_font_size is None:
+        return calendar_image
+
+    # Create a font object with the maximum font size
+    title_font = ImageFont.truetype(calendar_settings["font_path_title"], max_font_size)
+
+    # Estimate the size of the title image (adding extra space for descenders)
+    estimated_height = max_font_size * 2  # Extra 20% space for descenders
+
+    # Create a larger transparent image for the title
+    title_image_large = Image.new("RGBA", (calendar_settings["Paper Pixel Width"], int(estimated_height)), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(title_image_large)
+
+    # Draw the title on the larger transparent image
+    draw.text((0, max_font_size * 0.1), calendar_settings["Title"], fill="black", font=title_font)
+
+    # Trim the image to the actual bounding box of the rendered text
+    bbox = title_image_large.getbbox()
+    title_image = title_image_large.crop(bbox)
+
+    # Save the title image as a PNG for inspection
+    title_image.save("title.png")
+
+    # Calculate the position to paste the title image onto the calendar image
+    title_width, title_height = title_image.size
+    title_x = (calendar_settings["Paper Pixel Width"] - title_width) // 2
+    title_y = calendar_settings["Margin Pixels"]
+    ic(title_image.getbbox())
+
+    # Paste the title image onto the calendar image
+    calendar_image.paste(title_image, (title_x, title_y), title_image)
+
+    ic(calendar_image.size)
+    ic(calendar_settings["Paper Pixel Width"],calendar_settings["Paper Pixel Height"])
+
+    return calendar_image
+
+
+
+
+
+calendar_settings.update(rainbow_violet_sequence)
+
+calendar_settings = initialize_calendar_settings(calendar_settings)
 
 calendar_image = make_calendar(calendar_settings)
 
