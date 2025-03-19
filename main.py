@@ -2,10 +2,10 @@ from mondocal import make_calendar
 
 
 calendar_settings = {
-    "Title": "SUMMER 2024",
+    "Title": "SPRING 2025",
     "Title Color": "#000000",
-    "Start Date": "8/12/2024",
-    "End Date": "12/31/2024",
+    "Start Date": "1/1/2025",
+    "End Date": "4/30/2025",
     "Narrow Percent": 1.5,
     "Thick Percent": 4.5,
     "Date Margin Multiplier": 1.5,
@@ -13,17 +13,17 @@ calendar_settings = {
     "Margin": 1,
     "Title Height": 1.5,
     "Top Title Proportion": 0.8,
-    "Date Font Size": 200,
+    "Date Font Size": 160,
     "Month Font Size": 200,
-    "Start Day": "Monday",
-    "Paper Width": 22,  # Renamed from Total Width
-    "Paper Height": 42,  # Renamed from Total Height
+    "Start Day": "Sunday",
+    "Paper Width": 26,  # Renamed from Total Width
+    "Paper Height": 40,  # Renamed from Total Height
     "Month Width": 0.5,
     "Font Path Day": "Poppins/Poppins-Regular.ttf",
     "Font Path Month": "Poppins/Poppins-Bold.ttf",
     "Font Path Title": "Poppins/Poppins-Medium.ttf",
     "PPI": 300,
-    "weekend_shader": "#f4f4f4",
+    "weekend_shader": "#e5e5e5",
     "weekend_shader_color": "black",
     "Uniform Narrow Lines": True,
     "Narrow Lines Color": "#777777",

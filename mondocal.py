@@ -7,16 +7,13 @@ from fpdf import FPDF
 
 
 class Day:
-    def __init__(self, date_str, calendar_settings):
-        # Convert date string to datetime object for easy manipulation
-        self.date = datetime.strptime(date_str, "%m/%d/%Y")
+    def __init__(self, date, calendar_settings):
+        self.date = date
+        self.settings = calendar_settings
 
         # Set the color based on the month
         self.color = calendar_settings[f"{self.date.strftime('%B')} Color"]
 
-        # These properties depend on your specific layout logic
-        self.row = self.calculate_row(calendar_settings)
-        self.column = self.date.weekday() + 1  # Monday is 1, Sunday is 7
 
         # Text for the day, usually the day number
         self.text = str(
@@ -37,7 +34,7 @@ class Day:
         # Calculate top-left corner
         self.top_left = (
             start_x + (self.column - 1) * day_width,
-            start_y + (self.row - 1) * day_height,
+            start_y + (self.row - 1) * day_height + self.offset,
         )
 
         # Calculate top-right corner
@@ -55,9 +52,10 @@ class Day:
         # Create an image for this day
         self.image = None
 
-    def calculate_row(self, calendar_settings):
-        # Find the first day of the first week in the calendar
-        start_date = datetime.strptime(calendar_settings["Start Date"], "%m/%d/%Y")
+    @property
+    def row(self):
+                # Find the first day of the first week in the calendar
+        start_date = datetime.strptime(self.settings["Start Date"], "%m/%d/%Y")
         first_day_of_calendar = start_date - timedelta(days=start_date.weekday())
 
         # Calculate the difference in days from the first day of the calendar
@@ -65,7 +63,38 @@ class Day:
 
         # Calculate the row (add 1 because we're starting from 1, not 0)
         row = math.ceil((days_from_first_day + 1) / 7)
+
+        # if the start day is sunday, then add 1 to the row only if the day is sunday
+        if self.settings["Start Day"] == "Sunday":
+            if self.date.weekday() == 6:
+                row += 1
+                
         return row
+    @property
+    def column(self):
+        if self.settings["Start Day"] == "Sunday":
+            return (self.date.weekday() + 1) % 7 + 1  # Sunday is 1, Monday is 2, ..., Saturday is 7
+        else:
+            return self.date.weekday() + 1  # Monday is 1, Sunday is 7
+
+    @property
+    def offset(self):
+        start_date = datetime.strptime(self.settings["Start Date"], "%m/%d/%Y")
+        end_date = datetime.strptime(self.settings["End Date"], "%m/%d/%Y")
+        day_height = self.settings["Day Height"]
+
+        if start_date.weekday() == 6 and end_date.weekday() != 6:
+            return -day_height
+        elif start_date.weekday() != 6 and end_date.weekday() == 6:
+            # Placeholder for future logic
+            pass
+        elif start_date.weekday() == 6 and end_date.weekday() == 6:
+            return -day_height
+        else:
+            # Placeholder for future logic
+            pass
+
+        return 0  # Default offset if no conditions are met
 
     def create_day_image(self, calendar_settings):
         # Define the image dimensions
@@ -234,6 +263,19 @@ def initialize_calendar_settings(calendar_settings):
     ).days + 1
     calendar_settings["total_weeks"] = math.ceil(calendar_settings["total_days"] / 7)
 
+    # Calculate the start and end day indices
+    start_day_index = calendar_settings["start_date"].weekday()
+    end_day_index = calendar_settings["end_date"].weekday()
+
+    # Adjust indices if the calendar starts on Sunday
+    if calendar_settings["Start Day"] == "Sunday":
+        start_day_index = -1 if start_day_index == 6 else start_day_index
+        end_day_index = -1 if end_day_index == 6 else end_day_index
+
+    # Adjust total_weeks if the starting day of the week is after the ending day
+    if start_day_index > end_day_index:
+        calendar_settings["total_weeks"] += 1
+
     # Calculate day height and round down to the nearest even integer
     calendar_settings["Day Height"] = round_down_to_even(
         calendar_settings["Print Height"] / calendar_settings["total_weeks"]
@@ -257,7 +299,7 @@ def create_day_objects(calendar_settings):
     days_with_images = {}
     current_date = calendar_settings["start_date"]
     while current_date <= calendar_settings["end_date"]:
-        day_obj = Day(current_date.strftime("%m/%d/%Y"), calendar_settings)
+        day_obj = Day(current_date, calendar_settings)
         day_image = day_obj.create_day_image(calendar_settings)
         day_obj.image = day_image
         days_with_images[current_date.strftime("%m-%d-%Y")] = day_obj
@@ -302,7 +344,10 @@ def create_month_list(start_date_str, end_date_str):
 
     # Check if the first month is a full month
     if not month_has_full_week(start_date, get_first_last_day_of_month(start_date)[1]):
-        start_date = start_date.replace(day=1, month=start_date.month + 1)
+        if start_date.month == 12:
+            start_date = start_date.replace(year=start_date.year + 1, month=1, day=1)
+        else:
+            start_date = start_date.replace(day=1, month=start_date.month + 1)
 
     # Check if the last month is a full month
     if not month_has_full_week(get_first_last_day_of_month(end_date)[0], end_date):
@@ -411,15 +456,12 @@ def create_calendar_with_days(days_with_images, calendar_settings):
 
 
 def add_days_of_week_to_calendar(calendar_image, calendar_settings):
-    days_of_week = [
-        "MONDAY",
-        "TUESDAY",
-        "WEDNESDAY",
-        "THURSDAY",
-        "FRIDAY",
-        "SATURDAY",
-        "SUNDAY",
-    ]
+    # Define the days of the week
+    days_of_week = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+
+    # Adjust the order if the start day is Sunday
+    if calendar_settings["Start Day"] == "Sunday":
+        days_of_week = ["SUNDAY"] + days_of_week[:-1]  # Move Sunday to the start
 
     # Use the same start_x and start_y as in the Day class
     start_x = int(calendar_settings["Margin Pixels"]) + int(
@@ -432,10 +474,6 @@ def add_days_of_week_to_calendar(calendar_image, calendar_settings):
     day_width = calendar_settings["Day Width"]
 
     draw = ImageDraw.Draw(calendar_image)
-
-    # Add a red vertical line at the start location for tralfamadorian testing
-    # line_end_y = calendar_settings["Paper Pixel Height"] - calendar_settings["Margin Pixels"]
-    # draw.line([(start_x, start_y), (start_x, line_end_y)], fill="red", width=1)
 
     # Calculate maximum font size that fits "WEDNESDAY" within the given dimensions
     max_font_width = int(day_width * 0.80)  # 80% of day_width
@@ -487,14 +525,23 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
         last_week = days_for_thick_lines[-7:]
         first_day = days_for_thick_lines[0]
         last_day = days_for_thick_lines[-1]
-        mondays = [day for day in days_for_thick_lines if day.date.weekday() == 0]
-        sundays = [day for day in days_for_thick_lines if day.date.weekday() == 6]
+
+        # Determine the first and last day of the week based on the "Start Day" setting
+        if calendar_settings["Start Day"] == "Sunday":
+            first_day_of_week = 6  # Sunday
+            last_day_of_week = 5   # Saturday
+        else:
+            first_day_of_week = 0  # Monday
+            last_day_of_week = 6   # Sunday
+
+        first_days = [day for day in days_for_thick_lines if day.date.weekday() == first_day_of_week]
+        last_days = [day for day in days_for_thick_lines if day.date.weekday() == last_day_of_week]
+
         draw = ImageDraw.Draw(calendar_image)
         adj = int(calendar_settings["Thick Pixels"] / 2)
 
         # Draw lines at the bottom first, adjusted to make them thinner once they're overwritten by the top lines
         for day in last_week:
-            # Adjusting the Y-coordinate of both points by subtracting 'adj'
             start_point = (day.bottom_left[0], day.bottom_left[1] - adj * 2 * last_adj)
             end_point = (day.bottom_right[0], day.bottom_right[1] - adj * 2 * last_adj)
 
@@ -504,8 +551,8 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
                 width=int(calendar_settings["Thick Pixels"]),
             )
 
-        # Draw lines at the right side of the last day, adjusting the top, except if the last day is a sunday, skip it
-        if last_day.date.weekday() != 6:
+        # Draw lines at the right side of the last day, adjusting the top, except if the last day is the last day of the week, skip it
+        if last_day.date.weekday() != last_day_of_week:
             start_point = (
                 last_day.bottom_right[0] - adj * last_adj,
                 last_day.bottom_right[1] + adj,
@@ -544,7 +591,7 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
             )
 
         # Draw lines at the left side of the month
-        for day in mondays:
+        for day in first_days:
             start_point = (day.bottom_left[0] + adj, day.bottom_left[1] + adj * 1)
             end_point = (day.top_left[0] + adj, day.top_left[1] - adj * 0)
             draw.line(
@@ -554,7 +601,7 @@ def draw_thick_lines(calendar_image, calendar_settings, days_with_images, month_
             )
 
         # Draw lines at the right side of the month
-        for day in sundays:
+        for day in last_days:
             start_point = (day.bottom_right[0], day.bottom_right[1] + adj)
             end_point = (day.top_right[0], day.top_right[1] - adj * 1)
             draw.line(
@@ -581,30 +628,43 @@ def add_months_to_calendar(
     for index, each in enumerate(month_list):
         month_color = calendar_settings[f"{each} Color"]
         month_name = each.upper()
-        # find the first monday of the month
+        
+        # Find the first day of the month
         days_for_month_labels = [
             day for day in days_with_images.values() if day.date.strftime("%B") == each
         ]
-        mondays = [day for day in days_for_month_labels if day.date.weekday() == 0]
-        # find coordinates for the top left corner of the first monday of the month
-        first_monday = mondays[0]
-        last_monday = mondays[-1]
-        start_x, start_y = first_monday.top_left
-        # calculate the bounding box of the month name, adding characters j and y to make sure the bounding box is large enough JY
-        month_name_bbox = font.getbbox(each.upper())
+        
+        # Determine the first day of the week based on the "Start Day" setting
+        if calendar_settings["Start Day"] == "Sunday":
+            first_day_of_week = 6  # Sunday
+        else:
+            first_day_of_week = 0  # Monday
+        
+        # Find the first occurrence of the first day of the week in the month
+        first_day = next(day for day in days_for_month_labels if day.date.weekday() == first_day_of_week)
+        last_day = days_for_month_labels[-1]
+        
+        start_x, start_y = first_day.top_left
+        
+        # Calculate the bounding box of the month name
+        month_name_bbox = font.getbbox(month_name)
         month_name_width = month_name_bbox[2] - month_name_bbox[0]
         month_name_height = month_name_bbox[3] - month_name_bbox[1]
-        # check if the month_name_width is greater than height of the mondays in the month and replace it with an abbreviation if it is
-        if month_name_width > (calendar_settings["Day Height"] * len(mondays)):
+        
+        # Check if the month_name_width is greater than the height of the days in the month and replace it with an abbreviation if it is
+        if month_name_width > (calendar_settings["Day Height"] * len(days_for_month_labels)):
             month_name = each[:3].upper()
-        # create an image for the month name using month color, month name, and font size, and calculated dimensions
+        
+        # Create an image for the month name
         month_name_image = Image.new(
             "RGBA", (month_name_width, month_name_height), (0, 0, 0, 0)
         )
         draw = ImageDraw.Draw(month_name_image)
         draw.text((0, month_name_height // -2), month_name, fill=month_color, font=font)
-        # rotate the image 90 CCW
+        
+        # Rotate the image 90 CCW
         month_name_image = month_name_image.rotate(90, expand=True)
+        
         # If "Center Months" is False, top justify the names of the months and paste the image onto the calendar image
         if not calendar_settings["Center Month"]:
             calendar_image.paste(
@@ -619,23 +679,15 @@ def add_months_to_calendar(
                 ),
                 month_name_image,
             )
-        # If "Center Months" is True, center the names of the months
-        # to do this we need to find the top of the first monday and the bottom of the last monday
-        # then find the center of the space between them
-        # then find the center of the month name
         else:
-            # find the top of the first monday
-            first_monday_top = first_monday.top_left[1]
-            # find the bottom of the last monday
-            last_monday_bottom = last_monday.bottom_left[1]
-            # find the center of the space between them
-            space_between = last_monday_bottom - first_monday_top
+            # Center the names of the months
+            first_day_top = first_day.top_left[1]
+            last_day_bottom = last_day.bottom_left[1]
+            space_between = last_day_bottom - first_day_top
             space_between_center = space_between // 2
-            # find the center of the month name
             month_name_center = month_name_height // 2
-            # find the top of the month name
             month_name_top = space_between_center - month_name_width // 2
-            # paste the image onto the calendar image
+            
             calendar_image.paste(
                 month_name_image,
                 (
